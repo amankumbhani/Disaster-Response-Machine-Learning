@@ -34,7 +34,7 @@ def load_data(database_filepath):
 
     # Load data from database
     engine = create_engine('sqlite:///' + str(database_filepath))
-    df = pd.read_sql_table("data/DisasterResponse.db", engine)
+    df = pd.read_sql_table("DisasterResponse.db", engine)
     
     # Input & Output to the Machine Learning Algorithm
     X, y = df['message'], df.iloc[:, 4:]
@@ -169,8 +169,7 @@ def main():
     else:
         print('Please provide the filepath of the disaster messages database '\
               'as the first argument and the filepath of the pickle file to '\
-              'save the model to as the second argument. \n\nExample: python '\
-              'train_classifier.py ../data/DisasterResponse.db classifier.pkl')
+              'save the model to as the second argument. \n\nExample: python train_classifier.py ../data/DisasterResponse.db classifier.pkl')
 
 
 if __name__ == '__main__':
