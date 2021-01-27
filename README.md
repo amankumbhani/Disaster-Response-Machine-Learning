@@ -19,7 +19,6 @@ pip install plotly
 pip install Flask
 pip install nltk
 pip install SQLAlchemy
-
 ```
 The code should run with no issues using Python versions 3.*.
 
@@ -36,6 +35,9 @@ At the time of a natural disaster, thousands of people are in need of essential 
 ## How to run
 <a id='results'></a>
 Go to app folder & run python run.py. This will deploy the dashboard locally. Go to the link mentioned & give the classifier a try!
+
+## Limitations
+Due to the skewed nature of the classes in the dataset, the F1 score that is obtained is very less (around 0.63). This can be improved if the imbalance in the dataset is eradicated.
 
 ## Licensing, Authors, Acknowledgements
 <a id='liscense'></a>
