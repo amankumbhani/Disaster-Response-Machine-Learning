@@ -36,11 +36,8 @@ def load_data(database_filepath):
     engine = create_engine('sqlite:///' + str(database_filepath))
     df = pd.read_sql_table("data/DisasterResponse.db", engine)
     
-    # Input to the Machine Learning Algorithm
-    X = df['message']
-
-    # Output for the Machine Learning Algorithm
-    y = df.iloc[:, 4:]
+    # Input & Output to the Machine Learning Algorithm
+    X, y = df['message'], df.iloc[:, 4:]
 
     return X, y, list(df.iloc[:, 4:].columns)
 

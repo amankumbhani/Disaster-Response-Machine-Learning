@@ -39,22 +39,13 @@ def clean_data(df):
     # Splits the categories column using a semicolon into a Series object containing all split elements
     categories = df['categories'].str.split(";", expand=True)
     
-    # Takes the first row to form column names
-    row = categories.iloc[0]
-    
     # Removes the last two characters at the end of the row variable to obtain a clean column name
-    category_colnames = row.apply(lambda x: x[:-2])
-    
-    # Substitutes obtained column names into the category_colnames variable
-    categories.columns = category_colnames
+    categories.columns = categories.iloc[0].apply(lambda x: x[:-2])
     
     # Set values under each column to the values as the last character of the string
     for column in categories:
-        # set each value to be the last character of the string
-        categories[column] = categories[column].astype(str).str[-1:]
-
-        # convert column from string to numeric
-        categories[column] = categories[column].astype(int)
+        # set each value to be the last character of the string & set them as an integer
+        categories[column] = (categories[column].astype(str).str[-1:]).astype(int)
     
     # Drop the original categories column
     df.drop('categories', inplace=True, axis=1)
@@ -63,10 +54,7 @@ def clean_data(df):
     df = pd.concat([df, categories], axis=1)
     
     # Convert values of the categories columns into binary form for MultiClassClassification
-    df.drop(df[df['related'] == 2].index, inplace=True)
-    
-    # Drop exact duplicates from the dataset
-    df.drop_duplicates(inplace=True)
+    df.drop_duplicates(df.drop(df[df['related'] == 2].index, inplace=True), inplace=True)
     
     return df
     
