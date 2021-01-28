@@ -28,13 +28,38 @@ At the time of a natural disaster, thousands of people are in need of essential 
 
 ## File Descriptions
 <a id='filedescriptions'></a>
-1. models - contains train_classifier.py to train the classifier
-2. data - contains process_data.py to preprocess & clean the data
+There are three file directories;
+1. models
+    * Contains a python script named train_classifier.py to train the cleaned dataset
+    * Contains a saved model as a pickle object named classifier.pkl
+2. data
+    * Contains a python script named process_data.py to clean & store the dataset into an SQLite Database
+    * disaster_messages.csv - Contains distress messages
+    * disaster_categories.csv - Contains 36 categories of types of distress messages
 3. app - contains code to run the data dashboard using flask
+    * run.py - A flask file that runs the dashboard
+    * template
+        * master.html - Main page of the dashboard
+        * go.html - Classification results page of the dashboard
 
 ## How to run
 <a id='results'></a>
-Go to app folder & run python run.py. This will deploy the dashboard locally. Go to the link mentioned & give the classifier a try!
+In order to run the project, the following steps need to be followed;
+1. Cleaning & Processing Data 
+    * Go to the data directory from your command prompt & enter the following command;
+    ```
+    python process_data.py disaster_messages.csv disaster_categories.csv DisasterResponse.db
+    ```
+    This script cleans the input data & stores it into a SQLite Database with the name DiasterResponse.db
+
+2. Training the classifier
+    To train your model on the clean data, run the following command from the models directory;
+    ```
+    python train_classifier.py ../data/DisasterResponse.db classifier.pkl
+    ```
+
+3. Running the data dashboard
+    * Go to the app folder & run python run.py. This will deploy the dashboard locally & will print out the IP address for the same
 
 ## Limitations
 Due to the skewed nature of the classes in the dataset, the F1 score that is obtained is very less (around 0.63). This can be improved if the imbalance in the dataset is eradicated.
