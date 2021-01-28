@@ -1,176 +1,123 @@
 # import libraries
 import sys
-from sklearn.tree import DecisionTreeClassifier
+import re
+import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
-import numpy as np
-import re
-import pickle
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.stem.wordnet import WordNetLemmatizer
-from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.multioutput import MultiOutputClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import classification_report
-import nltk
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
 
-def load_data(database_filepath):
+def load_data(messages_filepath, categories_filepath):
     '''
-    Loads the clean dataset from the database whose filepath is user mentioned
+    Loads the data from two CSV files - messages.csv, categories.csv & merges 
+    them using an inner merge on "ID's" which are the same
     
+    Args:
+    messages_filepath: Path to the messages.csv file
+    categories_filepath: Path to the categories.csv file
+    
+    Returns:
+    A merged dataframe containing data from both, messages.csv & categories.csv
+    '''
+    
+    messages = pd.read_csv(messages_filepath)
+    categories = pd.read_csv(categories_filepath)
+    df = messages.merge(categories, how='inner', on='id')
+    
+    return df
+
+def clean_data(df):
+    '''
+    Cleans the merged dataframe to store it in an SQLite Database
+    This cleaned data can directly be used for training any classifier
+    
+    Args:
+    df: Merged dataframe to be cleaned
+    
+    Returns:
+    df: A clean master dataframe
+    '''
+    
+    # Splits the categories column using a semicolon into a Series object containing all split elements
+    categories = df['categories'].str.split(";", expand=True)
+    
+    # Removes the last two characters at the end of the row variable to obtain a clean column name
+    categories.columns = categories.iloc[0].apply(lambda x: x[:-2])
+    
+    # Set values under each column to the values as the last character of the string
+    for column in categories:
+        # set each value to be the last character of the string & set them as an integer
+        categories[column] = (categories[column].astype(str).str[-1:]).astype(int)
+    
+    # Drop the original categories column
+    df.drop('categories', inplace=True, axis=1)
+    
+    # Concatenate the master dataframe with the new categories columns ( 36 of them ) 
+    df = pd.concat([df, categories], axis=1)
+    
+    # Convert values of the categories columns into binary form for MultiClassClassification
+    df.drop_duplicates(df.drop(df[df['related'] == 2].index, inplace=True), inplace=True)
+    
+    return df
+    
+def save_data(df, database_filename):
+    '''
+    Saves the master dataframe into a SQLite database
+
     Args: 
-    database_filepath: The input filepath to the database
-
-    Returns:
-    X, y: The messages & output labels (35 classes)
-    category_names: Category names of the output (35 classes)
-    '''
-
-    # Load table data from database
-    engine = create_engine('sqlite:///{}'.format(database_filepath))
-    df = pd.read_sql_table('DisasterResponse', engine)
+    df: Master cleaned dataframe
+    database_filename: The database filename to be saved as
     
-    # Input & Output to the Machine Learning Algorithm
-    X, y = df['message'], df.iloc[:, 4:]
-
-    return X, y, list(df.iloc[:, 4:].columns)
-
-def tokenize(text):
-    '''
-    Tokenizes the input text received by the CountVectorizer()
-    
-    Args: 
-    text: Input text sentence
-
-    Returns:
-    clean_tokens: A list of clean returned lemmatized words of the input sentence
-    '''
-
-    # Remove punctuation marks
-    text = re.sub("[^a-zA-Z0-9]", " ", text)
-    
-    # Tokenize the text into words
-    words = word_tokenize(text)
-    
-    # Remove stop words
-    words = [w for w in words if w not in stopwords.words('english')]
-    
-    # Initialize the Lemmatizer
-    lemmatizer = WordNetLemmatizer()
-    
-    clean_tokens = []
-    
-    for word in words:
-        # Lemmatize each word and convert it into a lower case without whitespaces
-        clean_tok = lemmatizer.lemmatize(word).lower().strip()
-        clean_tokens.append(clean_tok)
-    
-    return clean_tokens
-
-def build_model():
-    '''
-    Builds the machine learning pipeline, defines parameters for hyper tuning & initializes
-    GridSearchCV
-
-    Args:
-    None
-
-    Returns:
-    model: Initialized GridSearchCV object
-    '''
-
-    # Defining the pipline using CountVectorizer(Bag of words), TfIdfTransformer(Document Term
-    # Frequency) & a classifier (DecisionTreeClassifier)
-    pipeline = Pipeline([
-        ('vect', CountVectorizer(tokenizer=tokenize)),
-        ('tfidf', TfidfTransformer()),
-        ('clf', MultiOutputClassifier(estimator=DecisionTreeClassifier()))
-    ])
-    
-    # Parameters that could be used for hypertuning the model
-    parameters_new = {
-        'vect__binary': [True, False],
-        'clf__estimator__min_samples_leaf': [10, 20, 30],
-        'clf__estimator__min_samples_split': [5, 7, 9]
-    }
-
-    # Initialized gridsearchcv object using pipeline and parameters
-    model = GridSearchCV(pipeline, param_grid=parameters_new, n_jobs=-1, cv=2, verbose=7)
-    
-    return model
-
-def evaluate_model(model, X_test, Y_test, category_names):
-    '''
-    Evaluates the model performance on the test set using F1 Scores
-
-    Args:
-    model: The model to be fit
-    X_test: The test set inputs
-    Y_test: The test set output labels
-    category_names: 35 Category Names (OUTPUT)
-
     Returns:
     None
     '''
 
-    y_pred_new = model.predict(X_test)
-    print(classification_report(Y_test.values, y_pred_new, target_names=category_names))
+    # Creates an SQLite Engine using the database filename passed by user as an argument
+    engine = create_engine('sqlite:///{}'.format(database_filename))
+
+    # Saves the dataframe to the SQLite database with the given name
+    # If the database already exists, it gets replaced
     
-def save_model(model, model_filepath):
-    '''
-    Saves the model as a pickle file for further usage
-
-    Args:
-    model: The trained model 
-    model_filepath: The name of the model to be saved as
-
-    Returns:
-    None
-    '''
-    pickle.dump(model, open(model_filepath, 'wb'))
+    df.to_sql('DisasterResponse', engine, index=False, if_exists='replace')
 
 def main():
+    '''
+    Main function
+    
+    Args: 
+    None
+    
+    Returns:
+    None
+    '''
+    
+    # Requires three arguments
+    if len(sys.argv) == 4:
 
-    # Requires 3 arguments while calling the script
-    if len(sys.argv) == 3:
-        database_filepath, model_filepath = sys.argv[1:]
-        print('Loading data...\n    DATABASE: {}'.format(database_filepath))
-
-        # Calls the load_data function which returns X, Y & category_names
-        X, Y, category_names = load_data(database_filepath)
-
-        # Splits the dataset into training and test sets (80% training, 20% test)
-        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+        # Requires path to messages.csv, categories.csv & the name of the database to save DF as
+        messages_filepath, categories_filepath, database_filepath = sys.argv[1:]
         
-        # Calls the build_model function which returns the instantiated GridSearchCV model
-        print('Building model...')
-        model = build_model()
+        print('Loading data...\n    MESSAGES: {}\n    CATEGORIES: {}'
+              .format(messages_filepath, categories_filepath))
         
-        # Trains the model with the training set
-        print('Training model...')
-        model.fit(X_train, Y_train)
+        # Calls the load_data() function that returns the merged dataframe
+        df = load_data(messages_filepath, categories_filepath)
+
+        print('Cleaning data...')
         
-        # Evaluates the model using evalute_model function on the test sets
-        print('Evaluating model...')
-        evaluate_model(model, X_test, Y_test, category_names)
-
-        # Saves the trained model using the save_model function
-        print('Saving model...\n    MODEL: {}'.format(model_filepath))
-        save_model(model, model_filepath)
-
-        print('Trained model saved!')
-
+        # Calls the clean_data() function that returns the cleaned dataframe
+        df = clean_data(df)
+        
+        print('Saving data...\n    DATABASE: {}'.format(database_filepath))
+        
+        # Calls the save_data() function that saves the dataframe to an SQLite database
+        save_data(df, database_filepath)
+        
+        print('Cleaned data saved to database!')
+    
     else:
-        print('Please provide the filepath of the disaster messages database '\
-              'as the first argument and the filepath of the pickle file to '\
-              'save the model to as the second argument. \n\nExample: python train_classifier.py ../data/DisasterResponse.db classifier.pkl')
-
+        print('Please provide the filepaths of the messages and categories '\
+              'datasets as the first and second argument respectively, as '\
+              'well as the filepath of the database to save the cleaned data '\
+              'to as the third argument. \n\nExample: python process_data.py disaster_messages.csv disaster_categories.csv DisasterResponse.db')
 
 if __name__ == '__main__':
     main()
