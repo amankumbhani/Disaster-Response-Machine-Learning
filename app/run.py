@@ -43,8 +43,25 @@ def index():
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
     
+    categories = df[df.columns[4:]]
+    percentages = []
+    cat_names = []
+    
+    for cats in categories.columns:
+        percentages.append(categories[cats].sum() * 100 / df.shape[0])
+        cat_names.append(cats)
+   
+    d = {k:v for k,v in zip(cat_names,percentages)}
+    
+    cat_df = pd.DataFrame.from_dict(d, orient='index')
+    cat_df.reset_index(inplace=True)
+    cat_df.columns = ['Categories', 'Percentage']
     # create visuals
     # TODO: Below is an example - modify to create your own visuals
+    
+    cat_names = list(cat_df['Categories'])
+    perc = list(cat_df['Percentage'])
+                            
     graphs = [
         {
             'data': [
@@ -67,18 +84,19 @@ def index():
         {
             'data': [
                 Bar(
-                    x=genre_names,
-                    y=genre_counts
+                    x=perc,
+                    y=cat_names,
+                    orientation='h'
                 )
             ],
 
             'layout': {
-                'title': 'Distribution of Message Genres',
+                'title': 'Message ategories & their percentages in the dataset',
                 'yaxis': {
-                    'title': "Count"
+                    'title': "Disaster Categories"
                 },
                 'xaxis': {
-                    'title': "Genre"
+                    'title': "Percentage"
                 }
             }
         }
