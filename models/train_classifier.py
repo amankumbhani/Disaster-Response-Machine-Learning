@@ -32,7 +32,7 @@ def load_data(database_filepath):
     category_names: Category names of the output (35 classes)
     '''
 
-    # Load data from database
+    # Load table data from database
     engine = create_engine('sqlite:///' + str(database_filepath))
     df = pd.read_sql_table(database_filepath, engine)
     
